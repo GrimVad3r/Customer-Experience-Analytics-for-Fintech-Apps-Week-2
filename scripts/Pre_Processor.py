@@ -7,8 +7,8 @@ def preprocess_data(df,output_file='../data/bank_reviews_clean.csv'):
     """Cleans the raw dataframe."""
     print("Preprocessing data...")
 
-    clean_df = df[['content', 'score', 'at', 'bank', 'source']]
-    clean_df.columns = ['review', 'rating', 'date', 'bank', 'source']
+    clean_df = df[['reviewId','content', 'score', 'at', 'bank', 'source']]
+    clean_df.columns = ['reviewId','review', 'rating', 'date', 'bank', 'source']
 
     clean_df['date'] = pd.to_datetime(clean_df['date']).dt.date
     clean_df.dropna(subset=['review'], inplace=True)
