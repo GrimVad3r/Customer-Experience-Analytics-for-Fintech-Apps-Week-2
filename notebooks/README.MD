@@ -1,78 +1,33 @@
-# 📊 KIAM8: WEEK 2 - Task 1: Data Collection and Preprocessing
+# Bank Reviews Data Engineering Project: PostgreSQL Schema
 
-This document summarizes the process outlined in `task-1.ipynb` for collecting and cleaning customer reviews for key Ethiopian mobile banking applications from the Google Play Store.
-
----
-
-## 🚀 Workflow Summary
-
-The task successfully executes a two-stage pipeline:
-
-1.  **Data Scraping**: Collects raw reviews, ratings, and associated metadata using the `scrapper.py` module.
-2.  **Data Preprocessing**: Cleans and transforms the raw data into an analysis-ready format using the `Pre_Processor.py` module.
-
-The code leverages external Python scripts (`scrapper.py` and `Pre_Processor.py`) and dynamically adds the `scripts` folder to the system path to enable module imports.
+This document outlines the relational database schema designed for persistently storing cleaned and processed bank review data using **PostgreSQL**. The schema consists of two tables: `banks_table` and `reviews_table`, linked by a foreign key constraint.
 
 
----
+## 1. Schema Overview
 
-## 🎯 Target Applications
+The design follows a basic star schema pattern where the `reviews_table` is the fact table containing individual review data, and the `banks_table` serves as a small dimension table for bank-specific information.
 
-The scraping focused on three major Ethiopian commercial banks:
+## 2. Table: `banks_table`
 
-| Bank Name | App ID (Package Name) |
-| :--- | :--- |
-| **CBE** | `com.combanketh.mobilebanking` |
-| **Awash Bank** | `com.sc.awashpay` |
-| **Abyssinia Bank** | `com.boa.boaMobileBanking` |
+This table stores unique information about the banks being analyzed.
 
----
+| Column Name | Data Type | Constraint | Description |
+| :--- | :--- | :--- | :--- |
+| **bank_id** | `VARCHAR(50)` | **PRIMARY KEY**, NOT NULL | A short, unique identifier for the bank (e.g., 'CBE', 'AWASH', 'BOA'). |
+| **bank_name** | `VARCHAR(100)` | NOT NULL | The full, official name of the bank (e.g., 'Commercial Bank of Ethiopia'). |
+| **app_name** | `VARCHAR(100)` | | The package name or identifier for the bank's mobile application. |
 
-## 1. Web Scraping (`scrapper.py`)
+## 3. Table: `reviews_table`
 
-The `scrapper.py` script was used to fetch a minimum of **400 reviews per bank** (1,200 total target).
+This table stores the cleaned review records, including the sentiment analysis results. It links to the `banks_table` via the `bank_id` foreign key.
 
-### ⚙️ Execution Details
-
-* **Function Used**: `scrapper.run_scraper(APPS, count=500)`
-    * *Note*: The `count` parameter was implicitly set to the default of 500, resulting in a total of **1500** reviews collected (500 per bank).
-* **Sorting**: Reviews were collected using the `Sort.NEWEST` criterion.
-* **Output File**: `../data/bank_reviews_raw.csv`
-
-### 🔍 Raw Data Validation
-
-The initial scraping process resulted in a DataFrame with **1500 total reviews**. The validation check revealed that `replyContent` and `repliedAt` columns were entirely null, and `reviewCreatedVersion` and `appVersion` had significant missing data, which is expected as bank staff rarely reply to reviews and version data is optional.
-
-| Column | Missing Count | Note |
-| :--- | :--- | :--- |
-| `replyContent` | 1500 | Bank replies are not present for any scraped review. |
-| `repliedAt` | 1500 | |
-| `reviewCreatedVersion` | 335 | Version information is missing for some entries. |
-| `appVersion` | 335 | |
-
----
-
-## 2. Data Preprocessing (`Pre_Processor.py`)
-
-The `Pre_Processor.py` script was applied to clean the raw DataFrame and prepare it for sentiment and text analysis.
-
-### 🧹 Cleaning Steps
-
-1.  **Column Selection & Rename**: Reduced the DataFrame to five essential columns and renamed them for clarity:
-    * `content` $\rightarrow$ **`review`**
-    * `score` $\rightarrow$ **`rating`**
-    * `at` $\rightarrow$ **`date`**
-    * `bank`
-    * `source`
-2.  **Date Normalization**: Converted the timestamp in the `date` column to a standard **YYYY-MM-DD** date format.
-3.  **Missing Data Handling**: Rows with a null value in the **`review`** content were removed.
-4.  **Deduplication**: Duplicate entries were dropped based on the combination of `review`, `date`, and `bank`.
-
-### ✅ Cleaned Data Result
-
-* **Function Used**: `preprocess_data(Scrapped_DF)`
-* **Final Data Size**: **1479** rows and **5** columns.
-    * *Note*: The reduction from 1500 to 1479 rows indicates **21 rows** were removed during the missing data and/or deduplication steps.
-* **Final Columns**: `review`, `rating`, `date`, `bank`, `source`.
-* **Missing Data Check**: The final DataFrame has **0 missing values** in any of the five final columns.
-* **Output File**: `../data/bank_reviews_clean.csv`
+| Column Name | Data Type | Constraint | Description |
+| :--- | :--- | :--- | :--- |
+| **review_id** | `VARCHAR(50)` | **PRIMARY KEY**, NOT NULL | A unique identifier for the individual review (UUID format). |
+| **bank_id** | `VARCHAR(50)` | **FOREIGN KEY** (references `banks_table`) | The ID of the bank the review is about. |
+| **review_text** | `VARCHAR` | | The original, raw text of the customer review. |
+| **rating** | `INTEGER` | | The numerical star rating given by the user (e.g., 1 to 5). |
+| **review_date** | `DATE` | | The date the review was posted. |
+| **sentiment_label** | `VARCHAR` | | The classified sentiment: 'positive' or 'negative'. |
+| **sentiment_score** | `DOUBLE PRECISION` | | The model's confidence score for the sentiment classification. |
+| **source** | `VARCHAR` | | The platform where the review was collected (e.g., 'Google Play'). |
